@@ -1,0 +1,119 @@
+#query
+CREATE OR REPLACE TABLE `mandiri-469611.dataaa.transactionsdata` AS
+SELECT *
+FROM `mandiri-469611.dataaa.transpart*`
+WHERE _TABLE_SUFFIX BETWEEN '1' AND '27';
+
+
+#transaksi pergender
+CREATE OR REPLACE TABLE `mandiri-469611.dataaa.transactions_per_gender` AS
+SELECT 
+  u.gender,
+  COUNT(t.id) AS total_transactions,
+  SUM(t.amount) AS total_amount,
+  AVG(t.amount) AS avg_amount
+FROM `mandiri-469611.dataaa.transactionsdata` t
+JOIN `mandiri-469611.dataaa.users` u
+  ON t.client_id = u.id
+GROUP BY u.gender;
+
+
+#transaksi per grup umur
+CREATE OR REPLACE TABLE `mandiri-469611.dataaa.transactions_per_age_group` AS
+SELECT 
+  CASE 
+    WHEN u.current_age < 25 THEN '<25'
+    WHEN u.current_age BETWEEN 25 AND 34 THEN '25-34'
+    WHEN u.current_age BETWEEN 35 AND 44 THEN '35-44'
+    WHEN u.current_age BETWEEN 45 AND 54 THEN '45-54'
+    ELSE '55+'
+  END AS age_group,
+  COUNT(t.id) AS total_transactions,
+  SUM(t.amount) AS total_amount,
+  AVG(t.amount) AS avg_amount
+FROM `mandiri-469611.dataaa.transactionsdata` t
+JOIN `mandiri-469611.dataaa.users` u
+  ON t.client_id = u.id
+GROUP BY age_group
+ORDER BY age_group;
+
+
+#chanel transaksi
+CREATE OR REPLACE TABLE `mandiri-469611.dataaa.transactions_channel` AS
+SELECT 
+  t.use_chip,
+  COUNT(t.id) AS total_transactions,
+  SUM(t.amount) AS total_amount
+FROM `mandiri-469611.dataaa.transactionsdata` t
+GROUP BY t.use_chip;
+
+
+#transaksi perbrand kartu
+CREATE OR REPLACE TABLE `mandiri-469611.dataaa.transactions_per_card_brand` AS
+SELECT 
+  k.card_brand,
+  COUNT(t.id) AS total_transactions,
+  SUM(t.amount) AS total_amount
+FROM `mandiri-469611.dataaa.transactionsdata` t
+JOIN `mandiri-469611.dataaa.cards` k
+  ON t.card_id = k.id
+GROUP BY k.card_brand;
+
+#dark web cards vs normal
+CREATE OR REPLACE TABLE `mandiri-469611.dataaa.transactions_darkweb` AS
+SELECT 
+  k.card_on_dark_web,
+  COUNT(t.id) AS total_transactions,
+  SUM(t.amount) AS total_amount,
+  AVG(t.amount) AS avg_amount
+FROM `mandiri-469611.dataaa.transactionsdata` t
+JOIN `mandiri-469611.dataaa.cards` k
+  ON t.card_id = k.id
+GROUP BY k.card_on_dark_web;
+
+
+#tren transaksi bulanan
+CREATE OR REPLACE TABLE `mandiri-469611.dataaa.transactions_monthly` AS
+SELECT 
+  FORMAT_DATE('%Y-%m', DATE(t.date)) AS month,
+  COUNT(t.id) AS total_transactions,
+  SUM(t.amount) AS total_amount
+FROM `mandiri-469611.dataaa.transactionsdata` t
+GROUP BY month
+ORDER BY month;
+
+#income vs spending
+CREATE OR REPLACE TABLE `mandiri-469611.dataaa.income_vs_spending` AS
+SELECT 
+  CASE 
+    WHEN u.yearly_income < 50000000 THEN '<50jt'
+    WHEN u.yearly_income BETWEEN 50000000 AND 100000000 THEN '50-100jt'
+    WHEN u.yearly_income BETWEEN 100000001 AND 200000000 THEN '100-200jt'
+    ELSE '>200jt'
+  END AS income_group,
+  SUM(t.amount) AS total_spent,
+  AVG(t.amount) AS avg_transaction_value,
+  COUNT(t.id) AS total_transactions
+FROM `mandiri-469611.dataaa.transactionsdata` t
+JOIN `mandiri-469611.dataaa.users` u
+  ON t.client_id = u.id
+GROUP BY income_group
+ORDER BY total_spent DESC;
+
+
+#debt ratio (debt vs income)
+CREATE OR REPLACE TABLE `mandiri-469611.dataaa.debt_ratio_spending` AS
+SELECT 
+  u.id AS client_id,
+  ROUND(u.total_debt / NULLIF(u.yearly_income,0), 2) AS debt_to_income_ratio,
+  SUM(t.amount) AS total_spent
+FROM `mandiri-469611.dataaa.transactionsdata` t
+JOIN `mandiri-469611.dataaa.users` u
+  ON t.client_id = u.id
+GROUP BY client_id, debt_to_income_ratio;
+
+
+
+
+
+
